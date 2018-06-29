@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(literal_true)
 {
 	char const* sourceCode = R"(
 		contract test {
-			function f() { var x = true; }
+			function f() public { var x = true; }
 		}
 	)";
 	bytes code = compileFirstExpression(sourceCode);
@@ -384,7 +384,7 @@ BOOST_AUTO_TEST_CASE(unary_inc_dec)
 {
 	char const* sourceCode = R"(
 		contract test {
-			function f(uint a) returns (uint x) { x = --a ^ (a-- ^ (++a ^ a++)); }
+			function f(uint a) public returns (uint x) { x = --a ^ (a-- ^ (++a ^ a++)); }
 		}
 	)";
 	bytes code = compileFirstExpression(sourceCode, {}, {{"test", "f", "a"}, {"test", "f", "x"}});
@@ -523,7 +523,7 @@ BOOST_AUTO_TEST_CASE(gas_left)
 {
 	char const* sourceCode = R"(
 		contract test {
-			function f() returns (uint256 val) {
+			function f() public returns (uint256 val) {
 				return msg.gas;
 			}
 		}
@@ -538,7 +538,7 @@ BOOST_AUTO_TEST_CASE(gas_left)
 
 	sourceCode = R"(
 		contract test {
-			function f() returns (uint256 val) {
+			function f() public returns (uint256 val) {
 				return gasleft();
 			}
 		}
