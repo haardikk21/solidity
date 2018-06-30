@@ -12432,6 +12432,35 @@ BOOST_AUTO_TEST_CASE(senders_balance)
 	BOOST_CHECK(callContractFunction("f()") == encodeArgs(u256(27)));
 }
 
+BOOST_AUTO_TEST_CASE(abi_decode_trivial)
+{
+	char const* sourceCode = R"(
+		contract C {
+			function f(bytes data) public view returns (uint) {
+				return abi.decode(data, uint);
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	ABI_CHECK(callContractFunction("f(bytes)", 0x20, 0x20, 33), encodeArgs(u256(33)));
+}
+
+BOOST_AUTO_TEST_CASE(abi_decode_simple)
+{
+	char const* sourceCode = R"(
+		contract C {
+			function f(bytes data) public view returns (uint, bytes) {
+				return abi.decode(data, uint, bytes);
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	ABI_CHECK(
+		callContractFunction("f(bytes)", 0x20, 0x20 * 4, 33, 0x40, 7, "abcdefg"),
+		encodeArgs(33, 0x20, 7, "abcdefgh")
+	);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }

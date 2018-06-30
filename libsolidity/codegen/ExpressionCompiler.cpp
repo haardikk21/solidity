@@ -1066,6 +1066,22 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			// stack now: <memory pointer>
 			break;
 		}
+		case FunctionType::Kind::ABIDecode:
+		{
+			TypePointers argumentTypes;
+			TypePointers targetTypes;
+			arguments.front()->accept(*this);
+			// TODO specialized implementation for calldata
+			// TODO closestTemporaryType()?
+			utils().convertType(*arguments.front()->annotation().type, ArrayType(DataLocation::Memory));
+			m_context << Instruction::DUP1 << u256(32) << Instruction::ADD;
+			m_context << Instruction::SWAP1 << Instruction::MLOAD;
+			// stack now: <mem_pos> <length>
+
+			TypePointers const& types = dynamic_cast<TupleType const&>(*_functionCall.annotation().type).components();
+			utils().abiDecode(types, true, true);
+			break;
+		}
 		case FunctionType::Kind::GasLeft:
 			m_context << Instruction::GAS;
 			break;

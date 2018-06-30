@@ -538,7 +538,30 @@ void TypeChecker::checkDoubleStorageAssignment(Assignment const& _assignment)
 			"copy to a temporary location, one of them might be overwritten before the second "
 			"is executed and thus may have unexpected effects. It is safer to perform the copies "
 			"separately or assign to storage pointers first."
-		);
+					);
+}
+
+vector<TypePointer> TypeChecker::deriveABIDecodeReturnTypes(FunctionCall const& _functionCall)
+{
+	vector<TypePointer> returnTypes;
+	vector<ASTPointer<Expression const>> arguments = _functionCall.arguments();
+	for (size_t i = 1; i < arguments.size(); ++i)
+	{
+		solAssert(arguments[i], "");
+		TypePointer const& argType = type(*arguments[i]);
+		if (TypeType const* argTypeType = dynamic_cast<TypeType const*>(argType.get()))
+			// TODO do we have to call "mobileType()" here?
+			// Are literals checked at a different place?
+			// What about storage pointers / storage references?
+			returnTypes.push_back(argTypeType->actualType());
+		else
+		{
+			m_errorReporter.typeError(arguments[i]->location(), "Argument has to be a type name.");
+			returnTypes.push_back(make_shared<TupleType>());
+		}
+	}
+	// TODO check that the decoder can decode this
+	return returnTypes;
 }
 
 void TypeChecker::endVisit(InheritanceSpecifier const& _inheritance)
@@ -1816,19 +1839,23 @@ bool TypeChecker::visit(FunctionCall const& _functionCall)
 					}
 				if (!errored)
 				{
-					TypePointer encodingType;
-					if (
-						argType->mobileType() &&
-						argType->mobileType()->interfaceType(false) &&
-						argType->mobileType()->interfaceType(false)->encodingType()
-					)
-						encodingType = argType->mobileType()->interfaceType(false)->encodingType();
-					// Structs are fine as long as ABIV2 is activated and we do not do packed encoding.
-					if (!encodingType || (
-						dynamic_cast<StructType const*>(encodingType.get()) &&
-						!(abiEncodeV2 && functionType->padArguments())
-					))
-						m_errorReporter.typeError(arguments[i]->location(), "This type cannot be encoded.");
+					if (functionType->kind() != FunctionType::Kind::ABIDecode)
+					{
+						// TODO we stil have to do something for "decode"
+						TypePointer encodingType;
+						if (
+							argType->mobileType() &&
+							argType->mobileType()->interfaceType(false) &&
+							argType->mobileType()->interfaceType(false)->encodingType()
+						)
+							encodingType = argType->mobileType()->interfaceType(false)->encodingType();
+						// Structs are fine as long as ABIV2 is activated and we do not do packed encoding.
+						if (!encodingType || (
+							dynamic_cast<StructType const*>(encodingType.get()) &&
+							!(abiEncodeV2 && functionType->padArguments())
+						))
+							m_errorReporter.typeError(arguments[i]->location(), "This type cannot be encoded.");
+					}
 				}
 			}
 			else if (!type(*arguments[i])->isImplicitlyConvertibleTo(*parameterTypes[i]))
@@ -1857,6 +1884,8 @@ bool TypeChecker::visit(FunctionCall const& _functionCall)
 						" or abi.encode(...) to use ABI encoding.";
 				m_errorReporter.typeError(arguments[i]->location(), msg);
 			}
+			if (functionType->kind() == FunctionType::Kind::ABIDecode)
+				_functionCall.annotation().type = make_shared<TupleType>(deriveABIDecodeReturnTypes(_functionCall));
 		}
 	}
 	else

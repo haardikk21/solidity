@@ -88,6 +88,8 @@ private:
 	/// Should only be called if the left hand side is tuple-typed.
 	void checkDoubleStorageAssignment(Assignment const& _assignment);
 
+	std::vector<TypePointer> deriveABIDecodeReturnTypes(FunctionCall const& _functionCall);
+
 	virtual void endVisit(InheritanceSpecifier const& _inheritance) override;
 	virtual void endVisit(UsingForDirective const& _usingFor) override;
 	virtual bool visit(StructDefinition const& _struct) override;
